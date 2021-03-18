@@ -38,10 +38,15 @@ def main_setup(sim_config):
     a = sim_config.getfloat("pareto_alpha")
     num_files = sim_config.getint("num_files")
 
+    # Sample from pareto distribution for the file_sizes, mean should be ~1
     file_sizes = np.random.default_rng().pareto(a, num_files)
+
+    # Sample from pareto distribution for the file probabilities,
+    # We then calculate the file probability as probabilitie[i]/sum(probabilities).
     probabilities = np.random.default_rng().pareto(a, num_files)
     total_p = sum(probabilities)
 
+    # File store class as global variable
     FILES = FileStore(
         [
             (i, size, p / total_p)
@@ -49,6 +54,8 @@ def main_setup(sim_config):
         ]
     )
 
+    # Show plot of pareto samples for file sizes.
+    # https://numpy.org/doc/stable/reference/random/generated/numpy.random.Generator.pareto.html#numpy.random.Generator.pareto
     if DEBUG_CONFIG.getboolean("show_plot"):
         print("file size mean:", file_sizes.mean())
         count, bins, _ = plt.hist(file_sizes, 100, density=True)
