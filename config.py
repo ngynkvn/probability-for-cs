@@ -9,8 +9,8 @@ class Config:
     Singleton / Global object that holds config parameters for application.
     """
 
-    SIM_CONFIG = configparser.ConfigParser()
-    DEBUG_CONFIG = configparser.ConfigParser()
+    SIM_CONFIG: configparser.SectionProxy
+    DEBUG_CONFIG: configparser.SectionProxy
 
     def __init__(self, config):
         if "Simulation" not in config:

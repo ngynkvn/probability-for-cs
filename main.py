@@ -1,4 +1,5 @@
 from scipy.stats import pareto
+import time
 import numpy as np
 import heapq
 import matplotlib.pyplot as plt
@@ -7,18 +8,19 @@ import argparse
 from collections import defaultdict
 import configparser
 from cache import Cache
-from event import RequestArrivedEvent
+from event import Event, RequestArrivedEvent, FileRecievedEvent
 from filepopulation import FileStore
 from config import Config, rng
+from typing import List, Union
 
 import logging
 
 logger = logging.getLogger("Sim")
 logging.basicConfig()
 
-FILES = None
+FILES: Union[FileStore, None] = None
 CURRENT_TIME = 0
-EVENT_QUEUE = []
+EVENT_QUEUE: List[Event] = []
 CACHE = None
 
 
@@ -95,6 +97,6 @@ if __name__ == "__main__":
     Config(config)
     if "Debug" in config:
         if Config.DEBUG_CONFIG.getboolean("logging"):
-            logger.root.setLevel(logging.DEBUG)
+            logger.setLevel(logging.DEBUG)
 
     main(config["Simulation"], args.seed)
