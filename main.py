@@ -1,5 +1,6 @@
 from scipy.stats import pareto
 import numpy as np
+import heapq
 import matplotlib.pyplot as plt
 import configparser
 import argparse
@@ -11,7 +12,10 @@ import logging
 logging.basicConfig()
 
 FILES = None
+SIM_CONFIG = configparser.ConfigParser()
 DEBUG_CONFIG = configparser.ConfigParser()
+
+rng = np.random.default_rng()
 
 
 class FileStore:
@@ -39,11 +43,11 @@ def main_setup(sim_config):
     num_files = sim_config.getint("num_files")
 
     # Sample from pareto distribution for the file_sizes, mean should be ~1
-    file_sizes = np.random.default_rng().pareto(a, num_files)
+    file_sizes = rng.pareto(a, num_files)
 
     # Sample from pareto distribution for the file probabilities,
     # We then calculate the file probability as probabilitie[i]/sum(probabilities).
-    probabilities = np.random.default_rng().pareto(a, num_files)
+    probabilities = rng.pareto(a, num_files)
     total_p = sum(probabilities)
 
     # File store class as global variable
@@ -66,15 +70,38 @@ def main_setup(sim_config):
     print(*sim_config.items())
 
 
+CURRENT_TIME = 0
+EVENT_QUEUE = []
+
+
+class RequestArrivedEvent:
+    def __init__(self, time):
+        self.time = time
+
+    def process(self):
+        # File request has arrived. We check server cache here
+        # and send the appropriate event. (TODO)
+
+        # User makes another file request according to Poisson(\lambda)
+        request_rate = SIM_CONFIG.getfloat("request_rate")
+        poisson_sample = rng.exponential(1 / request_rate)
+        heapq.heappush(EVENT_QUEUE, RequestArrivedEvent(CURRENT_TIME + poisson_sample))
+        pass
+
+
 def main(sim_config, seed):
+    global EVENT_QUEUE, CURRENT_TIME
     print("Hi!", seed)
     total_requests = sim_config.getint("total_requests")
     num_finished = 0
     main_setup(sim_config)
     # main loop
+    heapq.heappush(EVENT_QUEUE, RequestArrivedEvent(CURRENT_TIME))
+
     while num_finished < total_requests:
-        # event = get_event()
-        # packet = get_packet()
+        event = heapq.heappop(EVENT_QUEUE)
+        CURRENT_TIME = event.time
+        event.process()
         num_finished += 1
 
 
@@ -95,6 +122,8 @@ if __name__ == "__main__":
     config.read(args.input)
     if "Simulation" not in config:
         raise ValueError('Missing "Simulation" header from config file.')
+    else:
+        SIM_CONFIG = config["Simulation"]
     if "Debug" in config:
         DEBUG_CONFIG = config["Debug"]
         if DEBUG_CONFIG.getboolean("logging"):
