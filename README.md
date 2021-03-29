@@ -3,7 +3,9 @@
 Python 3.8.3 required
 
 Install requirements with:
-    pip install -r requirements.txt
+```
+pip install -r requirements.txt
+```
 
 # Team Members
 
