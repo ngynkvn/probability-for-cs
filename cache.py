@@ -21,7 +21,8 @@ class Cache:
     def add(self, file: File):
         while self.size() >= self.capacity:
             k = self.queue.get()
-            del self.cache[k]
+            if k in self.cache:
+                del self.cache[k]
         self.cache[file.id] = file
         self.queue.put(file.id)
 
