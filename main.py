@@ -8,7 +8,7 @@ import argparse
 from collections import defaultdict
 import configparser
 from cache import Cache
-from event import Event, RequestArrivedEvent, FileRecievedEvent
+from event import Event, NewRequestEvent, FileRecievedEvent
 from filepopulation import FileStore
 from config import Config, rng
 from typing import List, Union
@@ -60,20 +60,26 @@ def main_setup(sim_config):
         plt.plot(bins, max(count) * fit / max(fit), linewidth=2, color="r")
         plt.show()
 
-    print(*sim_config.items())
+    print("Inputs:")
+    print("[Simulation]")
+    for key, value in Config.SIM_CONFIG.items():
+        print(f"{key}\t=\t{value}")
+    print("[Debug]")
+    for key, value in Config.DEBUG_CONFIG.items():
+        print(f"{key}\t=\t{value}")
 
 
 def main(sim_config, seed):
     global EVENT_QUEUE, CURRENT_TIME
-    print("Hi!", seed)
     total_requests = sim_config.getint("total_requests")
     num_finished = 0
     main_setup(sim_config)
     # main loop
-    heapq.heappush(EVENT_QUEUE, RequestArrivedEvent(CURRENT_TIME, FileStore.sample()))
+    heapq.heappush(EVENT_QUEUE, NewRequestEvent(CURRENT_TIME, FileStore.sample()))
 
     while num_finished < total_requests:
         event = heapq.heappop(EVENT_QUEUE)
+        print(event, len(EVENT_QUEUE))
         CURRENT_TIME = event.time
         event.process(EVENT_QUEUE, CACHE, CURRENT_TIME)
         num_finished += 1

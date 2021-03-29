@@ -11,7 +11,7 @@ logger = logging.getLogger("Sim")
 @dataclass
 class File:
     id: int
-    size: float
+    size: float  # MB
     p: float
 
 
