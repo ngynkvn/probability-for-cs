@@ -79,7 +79,6 @@ def main(sim_config, seed):
 
     while num_finished < total_requests:
         event = heapq.heappop(EVENT_QUEUE)
-        print(event, len(EVENT_QUEUE))
         CURRENT_TIME = event.time
         event.process(EVENT_QUEUE, CACHE, CURRENT_TIME)
         num_finished += 1

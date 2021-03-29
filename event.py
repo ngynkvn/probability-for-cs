@@ -3,12 +3,15 @@ import heapq
 from filepopulation import FileStore, File
 from dataclasses import dataclass
 from cache import Cache
-from typing import List
+from typing import List, Any
+from queue import Queue
 
 
 @dataclass
 class Event:
     time: float
+    file: File
+    prev: Any = None
 
     def __lt__(self, other):
         return self.time < other.time
@@ -19,20 +22,23 @@ class Event:
 
 @dataclass
 class NewRequestEvent(Event):
-    file: File
-
     def process(self, queue, cache: Cache, current_time):
         # File request has arrived. We check server cache here
         # and send the appropriate event. (TODO)
-        if cache.get(self.file.id):
+        if cache.get(self.file):
             network_bandwidth = Config.SIM_CONFIG.getfloat("network_bandwidth")
             heapq.heappush(
                 queue,
-                FileRecievedEvent(current_time + (self.file.size / network_bandwidth)),
+                FileRecievedEvent(
+                    current_time + (self.file.size / network_bandwidth), self.file, self
+                ),
             )
         else:
             round_trip = Config.SIM_CONFIG.getfloat("round_trip")
-            heapq.heappush(queue, ArriveAtQueueEvent(current_time + round_trip))
+            heapq.heappush(
+                queue,
+                ArriveAtQueueEvent(current_time + round_trip, self.file, self),
+            )
 
         # User makes another file request according to Poisson(\lambda)
         request_rate = Config.SIM_CONFIG.getfloat("request_rate")
@@ -52,19 +58,67 @@ class FileRecievedEvent(Event):
           .-calculate the response time associated with that file and record the
             response time (a data sample has been collected).
         """
-        raise NotImplementedError()
+
+        # For now, print tracebacks.
+        print(f"[{self.__class__.__name__}], t={self.time}, f={self.file}")
+        p = self.prev
+        while p:
+            print(f"\t[{p.__class__.__name__}], t={p.time}, f={p.file}")
+            p = p.prev
 
 
-FIFO_QUEUE: List[File] = []
+FIFO_QUEUE: Queue = Queue()
 
 
 @dataclass
 class ArriveAtQueueEvent(Event):
     def process(self, queue, cache, current_time):
-        raise NotImplementedError()
+        """
+        if the queue is not empty,
+        add the file (i.e., the info about the file)
+        at the end of the FIFO queue.
+        """
+        if not FIFO_QUEUE.empty():
+            FIFO_QUEUE.put((self.file, self))
+        else:
+            """if the queue is empty,
+            generate a new depart-queue-event,
+            with theevent-time = current-time +Si/Ra
+            """
+            r_a = Config.SIM_CONFIG.getfloat("access_link_bandwidth")
+            heapq.heappush(
+                queue,
+                DepartQueueEvent(
+                    current_time + (self.file.size / r_a), self.file, self
+                ),
+            )
+
+        assert self.time == current_time
 
 
 @dataclass
 class DepartQueueEvent(Event):
     def process(self, queue, cache, current_time):
-        raise NotImplementedError()
+        """
+        store the new file in the cache if there is enough space.
+        If the cacheis full, remove enough files based on your cache replacement policy
+        and store the new file
+        .- generate a new file-received-event, with the event-time = current-time +Si/Rc
+        .- If the FIFO queue is not empty, generate a new depart-queue-event
+            for the head-of-queue file, sayj, with the event-time = current-time+Sj/Ra
+        """
+        cache.add(self.file)
+        network_bandwidth = Config.SIM_CONFIG.getfloat("network_bandwidth")
+        heapq.heappush(
+            queue,
+            FileRecievedEvent(
+                current_time + self.file.size / network_bandwidth, self.file, self
+            ),
+        )
+        if not FIFO_QUEUE.empty():
+            (head, ev) = FIFO_QUEUE.get()
+            r_a = Config.SIM_CONFIG.getfloat("access_link_bandwidth")
+            heapq.heappush(
+                queue,
+                DepartQueueEvent(current_time + (head.size / r_a), head, ev),
+            )
