@@ -1,8 +1,7 @@
 from config import Config
 import heapq
 from filepopulation import FileStore, File
-from dataclasses import dataclass
-from cache import Cache
+from dataclasses import dataclass, field
 from typing import List, Any
 from queue import Queue
 from stats import Stats
@@ -13,6 +12,7 @@ class Event:
     time: float
     file: File
     prev: Any = None
+    meta: Any = field(default_factory=dict)
 
     def __lt__(self, other):
         return self.time < other.time
@@ -23,7 +23,7 @@ class Event:
 
 @dataclass
 class NewRequestEvent(Event):
-    def process(self, queue, cache: Cache, current_time):
+    def process(self, queue, cache, current_time):
         # File request has arrived. We check server cache here
         # and send the appropriate event. (TODO)
         if cache.get(self.file):
@@ -31,7 +31,10 @@ class NewRequestEvent(Event):
             heapq.heappush(
                 queue,
                 FileRecievedEvent(
-                    current_time + (self.file.size / network_bandwidth), self.file, self
+                    current_time + (self.file.size / network_bandwidth),
+                    self.file,
+                    self,
+                    {"cache_hit": True},
                 ),
             )
         else:
@@ -67,7 +70,9 @@ class FileRecievedEvent(Event):
             p = p.prev
         start = p.time
         Stats.response_times.append(end - start)
-
+        Stats.cache_hits.append(self.meta["cache_hit"])
+        Stats.total_cache_hits += self.meta["cache_hit"]
+        return 1
 
 
 FIFO_QUEUE: Queue = Queue()
@@ -97,7 +102,6 @@ class ArriveAtQueueEvent(Event):
             )
 
 
-
 @dataclass
 class DepartQueueEvent(Event):
     def process(self, queue, cache, current_time):
@@ -106,18 +110,23 @@ class DepartQueueEvent(Event):
         If the cacheis full, remove enough files based on your cache replacement policy
         and store the new file
         .- generate a new file-received-event, with the event-time = current-time +Si/Rc
-        .- If the FIFO queue is not empty, generate a new depart-queue-event
-            for the head-of-queue file, sayj, with the event-time = current-time+Sj/Ra
         """
         cache.add(self.file)
         network_bandwidth = Config.SIM_CONFIG.getfloat("network_bandwidth")
         heapq.heappush(
             queue,
             FileRecievedEvent(
-                current_time + self.file.size / network_bandwidth, self.file, self
+                current_time + self.file.size / network_bandwidth,
+                self.file,
+                self,
+                {"cache_hit": False},
             ),
         )
         if not FIFO_QUEUE.empty():
+            """
+            .- If the FIFO queue is not empty, generate a new depart-queue-event
+                for the head-of-queue file, say j, with the event-time = current-time+Sj/Ra
+            """
             (head, ev) = FIFO_QUEUE.get()
             r_a = Config.SIM_CONFIG.getfloat("access_link_bandwidth")
             heapq.heappush(

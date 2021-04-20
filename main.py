@@ -8,12 +8,13 @@ import random
 import argparse
 from collections import defaultdict
 import configparser
-from cache import Cache
+from cache import CacheFactory
 from event import Event, NewRequestEvent, FileRecievedEvent
 from filepopulation import FileStore
 from config import Config
 from typing import List, Union
 from stats import Stats
+import progressbar
 
 import logging
 
@@ -51,16 +52,7 @@ def main_setup(sim_config):
     )
 
     # Cache class as global
-    CACHE = Cache(sim_config)
-
-    # Show plot of pareto samples for file sizes.
-    # https://numpy.org/doc/stable/reference/random/generated/numpy.random.Generator.pareto.html#numpy.random.Generator.pareto
-    if Config.DEBUG_CONFIG.getboolean("show_plot"):
-        print("file size mean:", file_sizes.mean())
-        count, bins, _ = plt.hist(file_sizes, 100, density=True)
-        fit = a / bins ** (a + 1)
-        plt.plot(bins, max(count) * fit / max(fit), linewidth=2, color="r")
-        plt.show()
+    CACHE = CacheFactory.new(sim_config)
 
     print("Inputs:")
     print("[Simulation]")
@@ -79,12 +71,43 @@ def main(sim_config):
     # main loop
     heapq.heappush(EVENT_QUEUE, NewRequestEvent(CURRENT_TIME, FileStore.sample()))
 
+    loop_start = time.time()
+    event_count = 0
+    chars = len(str(total_requests))
+
     while num_finished < total_requests:
+        if not num_finished % 1000:
+            print(
+                f"Finished/Total:\t{num_finished: >{chars}}/{total_requests}\tCache Hits: {Stats.total_cache_hits}",
+                end="\r",
+            )
         event = heapq.heappop(EVENT_QUEUE)
         CURRENT_TIME = event.time
         event.process(EVENT_QUEUE, CACHE, CURRENT_TIME)
-        num_finished += 1
+        event_count += 1
+        if isinstance(event, FileRecievedEvent):
+            num_finished += 1
+    print(
+        f"Simulation finished in {time.time() - loop_start} seconds, processing {num_finished} requests and {event_count} events"
+    )
+    cache_miss_rate = 1 - (Stats.total_cache_hits / total_requests)
+    rr = Config.SIM_CONFIG.getfloat("request_rate")
+    print("Current Time:", CURRENT_TIME)
+    print("Cache Miss Rate: ", cache_miss_rate)
+    print("Estimated Inbound Traffic Rate:", cache_miss_rate * rr, "requests / second")
+    print("Response Time Metrics")
     print(pd.DataFrame(Stats.response_times).describe())
+    if Config.DEBUG_CONFIG.getboolean("show_plot"):
+        print("Showing response time plot")
+        x = range(len(Stats.response_times))
+        y = Stats.response_times
+        c = list(map(lambda x: "blue" if x else "red", Stats.cache_hits))
+        plt.scatter(x, y, 2, c)
+        plt.show()
+        h_data = pd.Series(y)
+        h_data = h_data[h_data.between(h_data.quantile(0.05), h_data.quantile(0.95))]
+        plt.hist(h_data, 50)
+        plt.show()
 
 
 if __name__ == "__main__":
