@@ -38,6 +38,14 @@ class FileStore:
         logger.debug(f"Mean file size: {mean_size}")
 
     @staticmethod
+    def mean():
+        return sum(map(lambda f: f.size, FileStore.files)) / len(FileStore.files)
+
+    @staticmethod
+    def size():
+        return sum(map(lambda f: f.size, FileStore.files))
+
+    @staticmethod
     def sample() -> File:
         """
         Sample as determined by probability weights.

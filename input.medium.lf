@@ -3,13 +3,13 @@
 Total_Requests = 30000
 Time_Limit = 600
 Num_Files = 10000
-Request_Rate = 100.0
+Request_Rate = 50.0
 Network_Bandwidth = 100
 Access_Link_Bandwidth = 15
 Round_Trip = 0.4
 Pareto_Alpha = 2
 Cache_Size = 1000
-Cache_Type = LRU
+Cache_Type = LF
 
 [Debug]
 logging=True

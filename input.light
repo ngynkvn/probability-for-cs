@@ -1,6 +1,7 @@
 [Simulation]
 
 Total_Requests = 30000
+Time_Limit = 600
 Num_Files = 10000
 Request_Rate = 10.0
 Network_Bandwidth = 100

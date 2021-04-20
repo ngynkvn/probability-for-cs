@@ -1,0 +1,6 @@
+*.png
+results
+commands
+*pyc
+*.log
+*.dot

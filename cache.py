@@ -42,6 +42,8 @@ class LRUCache:
             return None
 
     def add(self, file: File):
+        if file.id in self.cache:
+            return
         self.cache[file.id] = file
         self.cache.move_to_end(file.id)
         size = self.size()
@@ -68,6 +70,8 @@ class LargestFirstCache:
             return None
 
     def add(self, file: File):
+        if file.id in self.cache:
+            return
         size = self.size()
         while size + file.size >= self.capacity:
             if not self.cache:
@@ -95,6 +99,8 @@ class FIFOCache:
         return sum(map(lambda x: x.size, self.cache.values()))
 
     def add(self, file: File):
+        if file.id in self.cache:
+            return
         size = self.size()
         while size + file.size >= self.capacity:
             if not self.queue:

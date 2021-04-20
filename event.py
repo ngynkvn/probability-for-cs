@@ -116,7 +116,7 @@ class DepartQueueEvent(Event):
         heapq.heappush(
             queue,
             FileRecievedEvent(
-                current_time + self.file.size / network_bandwidth,
+                current_time + (self.file.size / network_bandwidth),
                 self.file,
                 self,
                 {"cache_hit": False},
