@@ -94,7 +94,7 @@ def main(sim_config):
     print(
         f"Simulation finished in {time.time() - loop_start} seconds, processing {num_finished} requests and {event_count} events"
     )
-    cache_miss_rate = 1 - (Stats.total_cache_hits / total_requests)
+    cache_miss_rate = 1 - (Stats.total_cache_hits / num_finished)
     rr = Config.SIM_CONFIG.getfloat("request_rate")
     access_link_bandwidth = Config.SIM_CONFIG.getfloat("access_link_bandwidth")
 

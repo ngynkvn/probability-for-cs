@@ -3,7 +3,7 @@
 Total_Requests = 30000
 Time_Limit = 600
 Num_Files = 10000
-Request_Rate = 100.0
+Request_Rate = 50.0
 Network_Bandwidth = 100
 Access_Link_Bandwidth = 15
 Round_Trip = 0.4
