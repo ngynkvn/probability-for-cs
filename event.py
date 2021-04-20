@@ -1,10 +1,11 @@
-from config import Config, rng
+from config import Config
 import heapq
 from filepopulation import FileStore, File
 from dataclasses import dataclass
 from cache import Cache
 from typing import List, Any
 from queue import Queue
+from stats import Stats
 
 
 @dataclass
@@ -42,7 +43,7 @@ class NewRequestEvent(Event):
 
         # User makes another file request according to Poisson(\lambda)
         request_rate = Config.SIM_CONFIG.getfloat("request_rate")
-        poisson_sample = rng.exponential(1 / request_rate)
+        poisson_sample = Config.rng.exponential(1 / request_rate)
         heapq.heappush(
             queue,
             NewRequestEvent(current_time + poisson_sample, FileStore.sample()),
@@ -60,11 +61,13 @@ class FileRecievedEvent(Event):
         """
 
         # For now, print tracebacks.
-        print(f"[{self.__class__.__name__}], t={self.time}, f={self.file}")
+        end = self.time
         p = self.prev
-        while p:
-            print(f"\t[{p.__class__.__name__}], t={p.time}, f={p.file}")
+        while p.prev:
             p = p.prev
+        start = p.time
+        Stats.response_times.append(end - start)
+
 
 
 FIFO_QUEUE: Queue = Queue()
@@ -93,7 +96,6 @@ class ArriveAtQueueEvent(Event):
                 ),
             )
 
-        assert self.time == current_time
 
 
 @dataclass

@@ -1,8 +1,6 @@
 import configparser
 import numpy as np
 
-rng = np.random.default_rng()
-
 
 class Config:
     """
@@ -11,8 +9,10 @@ class Config:
 
     SIM_CONFIG: configparser.SectionProxy
     DEBUG_CONFIG: configparser.SectionProxy
+    rng = None
 
-    def __init__(self, config):
+    def __init__(self, config, seed = 0):
+        Config.rng = np.random.default_rng(seed)
         if "Simulation" not in config:
             raise ValueError('Missing "Simulation" header from config file.')
         else:

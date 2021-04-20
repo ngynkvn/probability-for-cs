@@ -1,4 +1,5 @@
 from scipy.stats import pareto
+import pandas as pd
 import time
 import numpy as np
 import heapq
@@ -10,8 +11,9 @@ import configparser
 from cache import Cache
 from event import Event, NewRequestEvent, FileRecievedEvent
 from filepopulation import FileStore
-from config import Config, rng
+from config import Config
 from typing import List, Union
+from stats import Stats
 
 import logging
 
@@ -33,11 +35,11 @@ def main_setup(sim_config):
     num_files = sim_config.getint("num_files")
 
     # Sample from pareto distribution for the file_sizes, mean should be ~1
-    file_sizes = rng.pareto(a, num_files)
+    file_sizes = Config.rng.pareto(a, num_files)
 
     # Sample from pareto distribution for the file probabilities,
     # We then calculate the file probability as probabilitie[i]/sum(probabilities).
-    probabilities = rng.pareto(a, num_files)
+    probabilities = Config.rng.pareto(a, num_files)
     total_p = sum(probabilities)
 
     # File store class as global variable
@@ -69,7 +71,7 @@ def main_setup(sim_config):
         print(f"{key}\t=\t{value}")
 
 
-def main(sim_config, seed):
+def main(sim_config):
     global EVENT_QUEUE, CURRENT_TIME
     total_requests = sim_config.getint("total_requests")
     num_finished = 0
@@ -82,6 +84,7 @@ def main(sim_config, seed):
         CURRENT_TIME = event.time
         event.process(EVENT_QUEUE, CACHE, CURRENT_TIME)
         num_finished += 1
+    print(pd.DataFrame(Stats.response_times).describe())
 
 
 if __name__ == "__main__":
@@ -99,9 +102,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
     config = configparser.ConfigParser()
     config.read(args.input)
-    Config(config)
+
+    random.seed(args.seed)
+    Config(config, args.seed)
+
     if "Debug" in config:
         if Config.DEBUG_CONFIG.getboolean("logging"):
             logger.setLevel(logging.DEBUG)
 
-    main(config["Simulation"], args.seed)
+    main(config["Simulation"])
